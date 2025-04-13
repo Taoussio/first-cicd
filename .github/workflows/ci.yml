@@ -1,4 +1,4 @@
-name: CI - Tests Python + Docker Build
+name: CI - Build & Push Docker to ECR
 
 on:
   push:
@@ -7,26 +7,33 @@ on:
     branches: [ main ]
 
 jobs:
-  build-and-test:
+  build-and-push:
     runs-on: ubuntu-latest
 
     steps:
     - name: 🔄 Checkout du code
       uses: actions/checkout@v3
 
-    - name: 🐍 Installer Python
-      uses: actions/setup-python@v4
+    - name: 🔐 Configurer les credentials AWS
+      uses: aws-actions/configure-aws-credentials@v2
       with:
-        python-version: '3.12'
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
 
-    - name: 📦 Installer les dépendances
-      run: |
-        python -m pip install --upgrade pip
+    - name: 🐳 Se connecter à Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
 
-    - name: 🧪 Lancer les tests unitaires
-      run: |
-        python -m unittest discover
+    - name: 🏷️ Définir le tag de l’image
+      run: echo "IMAGE_TAG=latest" >> $GITHUB_ENV
 
-    - name: 🐳 Construire l'image Docker
+    - name: 🐳 Build et Push vers ECR
+      env:
+        AWS_REGION: ${{ secrets.AWS_REGION }}
+        AWS_ACCOUNT_ID: ${{ secrets.ECR_ACCOUNT_ID }}
+        ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
       run: |
-        docker build -t calculator-python .
+        IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}
+        docker build -t $IMAGE_URI .
+        docker push $IMAGE_URI
