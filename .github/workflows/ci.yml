@@ -1,4 +1,4 @@
-name: CI - Build & Push Docker to ECR
+name: CI - Build, Test & Push Docker to ECR
 
 on:
   push:
@@ -7,12 +7,23 @@ on:
     branches: [ main ]
 
 jobs:
-  build-and-push:
+  build-test-and-push:
     runs-on: ubuntu-latest
 
     steps:
     - name: 🔄 Checkout du code
       uses: actions/checkout@v3
+
+    - name: 🧪 Installer Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: 🧪 Installer les dépendances
+      run: pip install -r requirements.txt
+
+    - name: 🧪 Lancer les tests unitaires
+      run: python -m unittest discover tests
 
     - name: 🔐 Configurer les credentials AWS
       uses: aws-actions/configure-aws-credentials@v2
@@ -25,8 +36,8 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
 
-    - name: 🏷️ Définir le tag de l’image
-      run: echo "IMAGE_TAG=latest" >> $GITHUB_ENV
+    - name: 🏷️ Définir le tag basé sur le commit
+      run: echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
 
     - name: 🐳 Build et Push vers ECR
       env:
