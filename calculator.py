@@ -1,3 +1,6 @@
+#This is a comment2
+#Ceci est une calculatrice en python
+
 def addition(a, b):
     return a + b
 
